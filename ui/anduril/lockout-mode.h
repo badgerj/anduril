@@ -14,3 +14,10 @@ uint8_t lockout_state(Event event, uint16_t arg);
 uint8_t autolock_config_state(Event event, uint16_t arg);
 #endif
 
+// --- Added: Timed lockout mode (2C) ---
+#ifndef LOCKOUT_2C_TIMEOUT
+#define LOCKOUT_2C_TIMEOUT 60
+#endif
+
+static uint16_t lockout_2c_timer = 0;
+static uint8_t lockout_2c_active = 0;
