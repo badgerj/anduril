@@ -38,6 +38,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     else if ((B_CLICK) == (event & (B_CLICK | B_PRESS))) {
         off_state_set_level(0);
     }
+    #ifdef USE_LOCKOUT_2C_MODE
     // --- NEW: 2C (double click) → timed ON ---
     // detect exactly 2 clicks (no hold)
     else if ((event & B_CLICK) && !(event & B_PRESS) && ((event & B_COUNT) == 2)) {
@@ -50,6 +51,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
 
         return EVENT_HANDLED;
     }
+    #endif  // ifdef USE_LOCKOUT_2C_MODE
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
 
     // regular event handling
@@ -68,6 +70,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     }
 
     else if (event == EV_tick) {
+       #ifdef USE_LOCKOUT_2C_MODE
        // --- NEW: handle timed ON countdown ---
        if (lockout_2c_active) {
            if (lockout_2c_timer > 0) {
@@ -81,6 +84,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
 
            return EVENT_HANDLED;
        }
+       #endif  // ifdef USE_LOCKOUT_2C_MODE
 
        if (arg > HOLD_TIMEOUT) {
             go_to_standby = 1;
@@ -113,6 +117,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     }
     #endif
 
+    #ifdef USE_LOCKOUT_2C_MODE
     // --- NEW: cancel timed mode on single click ---
     else if ((event & B_CLICK) && !(event & B_PRESS) && ((event & B_COUNT) == 1)) {
         if (lockout_2c_active) {
@@ -122,6 +127,7 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             return EVENT_HANDLED;
         }
     }
+    # endif // ifdef USE_LOCKOUT_2C_MODE
 
     // 3 clicks: exit and turn off
     else if (event == EV_3clicks) {
@@ -240,9 +246,11 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     #ifdef USE_AUTOLOCK
     // 10H: configure the autolock option
     else if (event == EV_click10_hold) {
+        #ifdef USE_LOCKOUT_2C_MODE
         // ensure timer is cleared when leaving lockout config paths
         lockout_2c_active = 0;
         lockout_2c_timer = 0;
+        #endif  // ifdef USE_LOCKOUT_2C_MODE
         push_state(autolock_config_state, 0);
         return EVENT_HANDLED;
     }

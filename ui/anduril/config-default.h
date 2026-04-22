@@ -223,3 +223,7 @@
 // (but allow disabling this feature per build)
 #define USE_CHANNEL_PER_STROBE
 
+// Timed lockout mode (2C)j for those that can support it
+#if (ROM_SIZE > 10000)
+#define USE_LOCKOUT_2C_MODE
+#endif
