@@ -24,10 +24,15 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         if (1 == click_num) {  // 1st click
             if (cfg.ramp_floors[1] < lvl) lvl = cfg.ramp_floors[1];
         }
-        #ifdef USE_LOCKOUT_2C_MODE
         // --- NEW: 2C (double click) → timed ON ---
         // detect exactly 2 clicks (no hold)
-        else if (!(event & B_PRESS) && (click_num == 2)) {
+        else {
+            #ifdef USE_MANUAL_MEMORY
+            if (cfg.manual_memory) lvl = cfg.manual_memory;
+            else
+            #endif
+            if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];
+
             uint8_t lvl = cfg.ramp_floors[0];  // use lowest floor like momentary
 
             off_state_set_level(lvl);
@@ -36,15 +41,6 @@ uint8_t lockout_state(Event event, uint16_t arg) {
             lockout_2c_active = 1;
 
             return EVENT_HANDLED;
-        }
-        #endif  // ifdef USE_LOCKOUT_2C_MODE
-        // click, hold: highest floor (or manual mem level)
-        else {  // 2nd click
-            #ifdef USE_MANUAL_MEMORY
-            if (cfg.manual_memory) lvl = cfg.manual_memory;
-            else
-            #endif
-            if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];
         }
         off_state_set_level(lvl);
     }
