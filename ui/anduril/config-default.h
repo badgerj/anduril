@@ -174,6 +174,8 @@
 #define USE_LOCKOUT_MODE
 // should lockout mode function as a momentary moon mode?
 #define USE_MOON_DURING_LOCKOUT_MODE
+// after 2C in lockout mode, stay awake this long before sleeping again
+#define LOCKOUT_2CLICK_TIMEOUT (60 * TICKS_PER_SECOND)
 // add an optional setting to lock the light after being off for a while
 #define USE_AUTOLOCK
 
