@@ -6,12 +6,17 @@
 
 #include "anduril/lockout-mode.h"
 
+#ifdef USE_LOCKOUT_2CLICK_TIMEOUT
 #ifndef LOCKOUT_2CLICK_TIMEOUT
 #define LOCKOUT_2CLICK_TIMEOUT (60 * TICKS_PER_SECOND)
 #endif
+#endif
 
 uint8_t lockout_state(Event event, uint16_t arg) {
-    static uint16_t lockout_awake_timeout = HOLD_TIMEOUT;
+    #ifdef USE_LOCKOUT_2CLICK_TIMEOUT
+    static uint16_t lockout_awake_timeout;
+    static uint16_t lockout_lit_ticks;  // countdown while light is on; 0 = off
+    #endif
     #ifdef USE_MOON_DURING_LOCKOUT_MODE
     // momentary(ish) moon mode during lockout
     // button is being held
@@ -41,7 +46,18 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     }
     // button was released
     else if ((B_CLICK) == (event & (B_CLICK | B_PRESS))) {
+        #if defined(USE_LOCKOUT_2CLICK_TIMEOUT)
+        if (lockout_lit_ticks > 0) {
+            // restore 2nd/higher floor level instead of turning off
+            uint8_t lvl = cfg.ramp_floors[0];
+            if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];
+            off_state_set_level(lvl);
+        } else {
+            off_state_set_level(0);
+        }
+        #else
         off_state_set_level(0);
+        #endif
     }
     #endif  // ifdef USE_MOON_DURING_LOCKOUT_MODE
 
@@ -52,7 +68,10 @@ uint8_t lockout_state(Event event, uint16_t arg) {
     //  even if the user keeps pressing the button)
     if (event == EV_enter_state) {
         ticks_since_on = 0;
+        #ifdef USE_LOCKOUT_2CLICK_TIMEOUT
         lockout_awake_timeout = HOLD_TIMEOUT;
+        lockout_lit_ticks = 0;
+        #endif
         #ifdef USE_INDICATOR_LED
             // redundant, sleep tick does the same thing
             // indicator_led_update(cfg.indicator_led_mode >> 2, 0);
@@ -61,16 +80,37 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         #endif
     }
 
-    // 2 clicks: keep lockout awake longer before sleeping
+    // 2 clicks: turn on at 2nd/higher floor for 60s, then go dark and sleep
+    #ifdef USE_LOCKOUT_2CLICK_TIMEOUT
     else if (event == EV_2clicks) {
-        lockout_awake_timeout = LOCKOUT_2CLICK_TIMEOUT;
+        lockout_lit_ticks = LOCKOUT_2CLICK_TIMEOUT;
+        lockout_awake_timeout = 0xFFFF;  // stay awake while lit
+        uint8_t lvl = cfg.ramp_floors[0];
+        if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];  // higher floor, same as 2H
+        off_state_set_level(lvl);
         return EVENT_HANDLED;
     }
+    #endif
 
     else if (event == EV_tick) {
+        #ifdef USE_LOCKOUT_2CLICK_TIMEOUT
+        // count down the lit timer; turn off and reset sleep timeout when done
+        if (lockout_lit_ticks > 0) {
+            lockout_lit_ticks--;
+            if (lockout_lit_ticks == 0) {
+                off_state_set_level(0);
+                lockout_awake_timeout = arg + HOLD_TIMEOUT;
+            }
+        }
         if (arg > lockout_awake_timeout) {
             go_to_standby = 1;
             lockout_awake_timeout = HOLD_TIMEOUT;
+            lockout_lit_ticks = 0;
+            off_state_set_level(0);
+        #else
+        if (arg > HOLD_TIMEOUT) {
+            go_to_standby = 1;
+        #endif
             #ifdef USE_INDICATOR_LED
             // redundant, sleep tick does the same thing
             //indicator_led_update(cfg.indicator_led_mode >> 2, arg);
