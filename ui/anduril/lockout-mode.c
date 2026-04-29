@@ -86,9 +86,22 @@ uint8_t lockout_state(Event event, uint16_t arg) {
         lockout_lit_ticks = LOCKOUT_2CLICK_TIMEOUT;
         lockout_awake_timeout = 0xFFFF;  // stay awake while lit
         uint8_t lvl = cfg.ramp_floors[0];
-        if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];  // higher floor, same as 2H
+        #ifdef USE_MANUAL_MEMORY
+        if (cfg.manual_memory) lvl = cfg.manual_memory;
+        else
+        #endif
+        if (cfg.ramp_floors[1] > lvl) lvl = cfg.ramp_floors[1];  // same level as 2H
         off_state_set_level(lvl);
         return EVENT_HANDLED;
+    }
+    // 1 click during lit window: cancel timeout, turn off, stay in lockout
+    else if (event == EV_1click) {
+        if (lockout_lit_ticks > 0) {
+            lockout_lit_ticks = 0;
+            off_state_set_level(0);
+            lockout_awake_timeout = HOLD_TIMEOUT;
+            return EVENT_HANDLED;
+        }
     }
     #endif
 
